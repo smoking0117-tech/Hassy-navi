@@ -12,6 +12,18 @@ function upgradeDemoStations(x){
 }
 let data=seed,tab='stations',editing=null,storageOK=true;
 try{const raw=localStorage.getItem(KEY);if(raw){const parsed=JSON.parse(raw);validate(parsed);data=parsed;if(upgradeDemoStations(data))localStorage.setItem(KEY,JSON.stringify(data));}}catch(e){storageOK=false;alert('保存データを読み込めませんでした。元の保存内容は上書きしません。バックアップの読み込み、またはブラウザの保存設定を確認してください。');}
+// Upgrade older six-station browser data to the complete Hokkaido station list.
+// Keep visits, notes and all other categories intact.
+if(storageOK && Array.isArray(data.stations) && data.stations.length === 6 && seed.stations.length > 6){
+  const previous = data.stations;
+  const byName = new Map(previous.map(r => [r.name, r]));
+  data.stations = seed.stations.map(r => {
+    const old = byName.get(r.name);
+    return old ? {...r, ...old, place:r.place} : r;
+  });
+  try { localStorage.setItem(KEY, JSON.stringify(data)); }
+  catch(e) { storageOK=false; alert('道の駅の更新を保存できませんでした。ブラウザの保存設定を確認してください。'); }
+}
 function validate(x){if(!x||x.version!==1||!tabs.every(t=>Array.isArray(x[t])&&x[t].length<=10000))throw Error('形式');for(const t of tabs){const ids=new Set;for(const r of x[t]){if(!r||typeof r.id!=='string'||ids.has(r.id)||typeof r.name!=='string'||!r.name.trim()||r.name.length>120||typeof r.done!=='boolean'||!['place','note','date'].every(k=>typeof r[k]==='string')||r.note.length>10000||r.place.length>120||r.date.length>10)throw Error('形式');ids.add(r.id);}}}
 function toast(msg){$('#toast').textContent=msg;$('#toast').style.display='block';clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('#toast').style.display='none',3500);}
 function save(){if(!storageOK){toast('自動保存できません。バックアップを書き出してください。');return;}try{localStorage.setItem(KEY,JSON.stringify(data));$('#saveState').textContent='✓ この端末に保存しました';}catch(e){$('#saveState').textContent='保存失敗：バックアップが必要';toast('端末に保存できません。バックアップを書き出してください。');}}
